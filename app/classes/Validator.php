@@ -85,7 +85,8 @@ class Validator {
 	 * @return [type]        [description]
 	 */
 	private function validate($name, $value, $rule, $message) {
-		if(!call_user_func_array(array($this, $rule), array($value))) {
+		$method = $rule;
+		if(!$this->$method($value)) {
 			$this->addErros($name, $rule, $message);
 		}
 	}
