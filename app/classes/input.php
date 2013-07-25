@@ -15,30 +15,90 @@
 class Input {
 
    /**
-    * Method hien tai cua request
-    * @var string
+    * Clean XSS
+    * @var boolean
     */
-   protected $method;
+   protected $clean_xss = false;
+
+   /**
+    * Escape string prevent SQL Injection
+    * @var boolean
+    */
+   protected $escape_string = false;
+
+   /**
+    * The hien cua lop Input
+    * @var instance
+    */
+   protected static $instance;
+
+   /**
+    * Get instance
+    * @return instance
+    */
+   public static function getInstance() {
+      if(!isset(Input::$instance)) {
+         Input::$instance = new Input();
+      }
+
+      return Input::$instance;
+   }
+
+   /**
+    * Thiet lap che do clean XSS
+    * @param  bool $status
+    * @return void
+    */
+   public static function cleanXSS($status) {
+
+      $instance = self::getInstance();
+
+      if (is_bool($status))
+         $instance->clean_xss = $status;
+
+      return $instance;
+   }
+
+   /**
+    * Thiet lap che do chong SQL Injection
+    * @param  bool $status
+    * @return void
+    */
+   public static function escapeString($status) {
+
+      $instance = self::getInstance();
+
+      if (is_bool($status))
+         $instance->escape_string = $status;
+
+      return $instance;
+   }
 
    /**
     * Lay du lieu tu 1 data source
     * @param  array     $array      Data source
     * @param  string    $key        Input field
     * @param  any       $default    Default value if not exitst input field
-    * @param  bool      $clean_xss  Clean XSS
     * @return any
     */
-   private function fetch_data(&$array, $key = '', $default = null, $clean_xss = false) {
+   private function fetch_data(&$array, $key = '', $default = null) {
       // Nhan gia tri mac dinh neu khong ton tai key trong array
       if (! isset($array[$key])) {
          return $default;
       }
 
-      if ($clean_xss === false) {
-         return $this->cleanXSS($array[$key]);
+      $data = $array[$key];
+
+      // Clean XSS
+      if ($this->clean_xss === true) {
+         $data = $this->_cleanXSS($array[$key]);
       }
 
-      return $array[$key];
+      // Prevent sql injection
+      if (is_string($data) && $this->escape_string)
+         $data = mysql_real_escape_string($data);
+
+      return $data;
    }
 
    /**
@@ -46,7 +106,7 @@ class Input {
     * @param  string|number $data
     * @return string|number
     */
-   private function cleanXSS($data) {
+   private function _cleanXSS($data) {
       // Fix &entity;
       $data = str_replace(array('&amp;','&lt;','&gt;'), array('&amp;amp;','&amp;lt;','&amp;gt;'), $data);
       $data = preg_replace('/(&#*\w+)[\x00-\x20]+;/u', '$1;', $data);
@@ -81,55 +141,53 @@ class Input {
    }
 
    /**
-    * Lay method hien tai cua 1 request
-    * @return string       GET/POST
-    */
-   private function getMethod() {
-      $this->method = isset($_SERVER['REQUEST_METHOD'])
-         ? strtoupper($_SERVER['REQUEST_METHOD'])
-         : 'GET';
-
-      return $this->method;
-   }
-
-   /**
-    * Lay gia tri data source theo request
-    * @return array     $_GET/$_POST
-    */
-   private function getMethodSource() {
-      $src = "_" . $this->getMethod();
-      return $$src;
-   }
-
-   /**
-    * Lay gia tri tu 1 data source ($_GET/$_POST)
+    * Lay gia tri tu 1 data source ($_POST/$_GET)
     *
     * @param  string    $field      Input field
     * @param  any       $default    Default value if not exist input field
     * @return any
     */
-   public static function get($field, $default = null, $clean_xss = false) {
-      return $this->fetch_data($this->getMethodSource(), $key, $default, $clean_xss);
+   public static function get($field, $default = null) {
+      $instance = self::getInstance();
+
+      $value = null;
+
+      if ( isset($_POST[$field])) {
+         $value = $instance->fetch_data($_POST, $field, $default);
+      } else {
+         $value = $instance->fetch_data($_GET, $field, $default);
+      }
+
+      return $value;
    }
 
    /**
     * Lay gia tri tu $_COOKIE
     * @param  string  $field     Input field
-    * @param  boolean $clean_xss Clean XSS
     * @return any
     */
-   public static function cookie($field, $clean_xss = false) {
-      return $this->fetch_data($_COOKIE, $field, null, $clean_xss);
+   public static function cookie($field) {
+      $instance = self::getInstance();
+      return $instance->fetch_data($_COOKIE, $field, null);
    }
 
    /**
     * Lay gia tri tu $_SERVER
     * @param  string  $field     Input field
-    * @param  boolean $clean_xss Clean XSS
     * @return any
     */
-   public static function server($field, $clean_xss = false) {
-      return $this->fetch_data($_SERVER, $field, null, $clean_xss);
+   public static function server($field) {
+      $instance = self::getInstance();
+      return $instance->fetch_data($_SERVER, $field, null);
+   }
+
+   /**
+    * Lay gia tri tu $_FILES
+    * @param  string  $field     Input field
+    * @return
+    */
+   public function file($field) {
+      # code...
    }
 
    /**
@@ -140,17 +198,18 @@ class Input {
     * @param  boolean $clean_xss       Clean XSS
     * @return array
     */
-   public static function all($clean_xss = false) {
+   public static function all() {
+      $instance = self::getInstance();
       // Response data
       $data = array();
 
-      // Data source
-      $source = $this->getMethodSource();
-
-      if (! empty($source)) {
-
-         foreach (array_keys($source) as $key) {
-            $data[$key] = $this->fetch_data($source, $key, null, $clean_xss);
+      if (! empty($_POST)) {
+         foreach (array_keys($_POST) as $key) {
+            $data[$key] = $instance->fetch_data($_POST, $key, null);
+         }
+      } else {
+         foreach (array_keys($_GET) as $key) {
+            $data[$key] = $instance->fetch_data($_GET, $key, null);
          }
       }
 
@@ -204,7 +263,15 @@ class Input {
     * @return boolean
     */
    public static function has($field) {
-      $source = $this->getMethodSource();
-      return isset($source[$field]);
+      $instance = self::getInstance();
+
+      if (     isset($_GET[$field])
+            || isset($_POST[$field])
+            || isset($_SERVER[$field])
+            || isset($_COOKIE[$field]) ) {
+         return true;
+      }
+
+      return false;
    }
 }
