@@ -11,17 +11,29 @@
       // echo Input::get('fullname');
       // print_r(Input::except('action', 're-password'));
       // print_r(Input::only('username', 'email'));
-      Input::cleanXSS(true);
-      Input::escapeString(true);
+      // Input::cleanXSS(true);
+      // Input::escapeString(true);
       // var_dump(Input::has('fname'));
 
+      $rules = array(
+         "username" => "required|string|min:6|max:20",
+         "email" => "required|email"
+      );
+
       $form_data = Input::except('action', 're-password');
-      $signup = new Statement;
-      foreach ($form_data as $key => $value) {
-         $signup->$key = $value;
+
+      $Validator = new Validator(Input::all(), $rules);
+
+      if ($Validator->passes()) {
+         $signup = new Statement;
+         foreach ($form_data as $key => $value) {
+            $signup->$key = $value;
+         }
+         $signup->setTable('users');
+         echo $signup->getInsertSql();
+      } else {
+         $errors = $Validator->errorMsg();
       }
-      $signup->setTable('users');
-      echo $signup->getInsertSql();
    }
 ?>
 <!DOCTYPE html>
