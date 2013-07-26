@@ -53,6 +53,13 @@ class Statement {
 	 */
 	private $ar_data = array();
 
+	public function __construct(array $data = array()) {
+		if( !empty($data) ) {
+			foreach($data as $name => $value)
+			$this->ar_data['field'][$name] = $value;
+		}
+	}
+
 	/**
 	 * Set primarykey
 	 * @param [type] $primaryKey [description]
