@@ -1,4 +1,16 @@
 <?php
+/**
+ * String class
+ *
+ * Copyright (c) 2013 VNP Ltd,.
+ *
+ * Class tổ chức các hàm liên quan đến việc xử lý chuỗi trong php
+ *
+ * @copyright  Copyright (c) 2013 VNP Ltd,.
+ * @license    http://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt LGPL
+ * @version    1.0.0
+ * @author ManhTran manhtt@vatgia.com
+ */
 
 class Str {
 
